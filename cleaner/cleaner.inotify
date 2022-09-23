@@ -1,0 +1,31 @@
+#!/system/bin/sh
+
+inotify=`realpath $0`
+scripts_dir=`dirname ${inotify}`
+service="${scripts_dir}/cleaner.service"
+folder_run="/data/adb/cleaner/run"
+
+events=$1
+monitor_dir=$2
+monitor_file=$3
+
+# make folder run
+folder_run() {
+    if [ ! -d "${folder_run}" ] ; then
+        mkdir -p ${folder_run}
+    fi
+}
+
+s prepare cache cleaner
+start_cleaner() {
+    if [ "${monitor_file}" = "disable" ] ; then
+        if [ "${events}" = "d" ] ; then
+            ${service} start 
+        elif [ "${events}" = "n" ] ; then
+            ${service} stop 
+        fi
+    fi
+}
+
+folder_run
+start_cleaner

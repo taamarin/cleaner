@@ -1,0 +1,131 @@
+#!/system/bin/sh
+
+scripts=`realpath $0`
+scripts_dir=`dirname ${scripts}`
+busybox_path="/data/adb/magisk/busybox"
+cleaner_run_path="/data/adb/cleaner/run"
+log_cleaner="$cleaner_run_path/cleaner.log"
+cleaner_pid="$cleaner_run_path/cache.pid"
+# “At minute 0 past every 6th hour.”
+schedule_cleaner="0 */6 * * *"
+
+run_cleaner() {
+    # Search and clear the apps cache in the "/data/data" directory
+    find /data/data/*/cache/* -delete &>/dev/null
+
+    # Search and clear the apps code_cache in the "/data/data" directory
+    find /data/data/*/code_cache/* -delete &>/dev/null
+
+    # Search and clear the apps cache in the "/data/user_de/{UID}" directory
+    find /data/user_de/*/*/cache/* -delete &>/dev/null
+
+    # Search and clear the apps code_cache in the "/data/user_de/{UID}" directory
+    find /data/user_de/*/*/code_cache/* -delete &>/dev/null
+
+    # Search and clear the apps cache in the "/sdcard/Android/data" directory
+    find /sdcard/Android/data/*/cache/* -delete &>/dev/null
+}
+
+# Declaring a function with the name "automatic"
+run_otomatis() {
+    echo `date` > $log_cleaner
+    local size1=$(du -cs /data/data/*/cache | grep total | cut -f 1)
+    echo "[info]: data/data/*/cache >>>>> ${size1}Kb" >> $log_cleaner
+    local size2=$(du -cs /data/data/*/code_cache | grep total | cut -f 1)
+    echo "[info]: data/data/*/code_cache >>>>> ${size2}Kb" >> $log_cleaner
+
+    local size3=$(du -cs /data/user_de/*/*/cache | grep total | cut -f 1)
+    echo "[info]: data/user_de/*/*/cache >>>>> ${size3}Kb" >> $log_cleaner
+    local size4=$(du -cs /data/user_de/*/*/code_cache | grep total | cut -f 1)
+    echo "[info]: data/user_de/*/*/code_cache >>>>> ${size4}Kb" >> $log_cleaner
+
+    local size5=$(du -cs /sdcard/Android/data/*/cache | grep total | cut -f 1)
+    echo "[info]: sdcard/android/data/*/cache >>>>> ${size5}Kb" >> $log_cleaner
+
+    local size6=$(du -cs /data/system/dropbox | grep total | cut -f 1)
+    echo "[info]: data/system/dropbox >>>>> ${size6}Kb" >> $log_cleaner
+
+
+    # total size cache
+    local total=$(( size1 + size2 + size3 + size4 + size5 + size6 ))
+    echo "[info]: total $size1 + $size2 + $size3 + $size4 + $size5 + $size6" >> $log_cleaner
+    echo "[info]: total Cache: ${total}Kb" >> $log_cleaner
+
+    # set Size limit Cache
+    size_cache="1024000" # 524000, default 1024000 / 1GB!!
+
+    # Check if the total cache size is greater than $size_cache
+    if [ $total -gt $size_cache ]; then
+
+        # Write the logs to the ".txt" file in the "/data/adb/cleaner/run" directory
+        local logs1="[info]: Cleaning apps cache..."
+        echo $logs1 >> $log_cleaner
+
+        # Calling the "cleaner" function
+        run_cleaner
+
+        # Write the logs to the ".log" file in the "/data/adb/cleaner/run" directory
+        local logs2="[info]: Done! The apps cache has been cleaned!"
+        echo $logs2 >> $log_cleaner
+    else
+        local logs3="[info]: Skip! Cache size is not yet ${size_cache}Kb"
+        echo $logs3 >> $log_cleaner
+    fi
+    local logs4="[info]: have you ever jumped over these bushes?" >> $log_cleaner
+    echo $logs4 >> $log_cleaner
+}
+
+run_crond() {
+    # setup crond
+    if [ "$?" = 0 ] ; then
+       ulimit -SHn 1000000
+       nohup ${busybox_path} crond -c ${cleaner_run_path} > /dev/null 2>&1 &
+       echo -n $! > $cleaner_pid
+    fi
+
+    # run crontab
+    ${busybox_path} crontab -c ${cleaner_run_path} -r
+    touch ${cleaner_run_path}/root
+    chmod 0600 ${cleaner_run_path}/root
+
+    # set schedule Cache cleaner & otomatis
+    echo "${schedule_cleaner} ${scripts_dir}/cleaner.service auto" >> ${cleaner_run_path}/root \
+    && echo "[info]: schedule Cache Cleaner (${schedule_cleaner})" >> $log_cleaner
+
+}
+
+display_pid() {
+    ps -ef | grep root | grep "crond -c /data/adb/cleaner" | $busybox_path awk '{print $2}' | head -1 > $cleaner_pid
+    echo "[info]: Cache Cleaner service is running (PID: `cat $cleaner_pid`)" >> $log_cleaner
+}
+
+start_cleaner() {
+    run_otomatis
+    run_crond
+    display_pid
+}
+
+stop_cleaner() {
+    cronkill=$(ps -ef | grep root | grep "crond -c /data/adb/cleaner/run" | ${busybox_path} awk '{ print $2 }' | sort -u)
+    for cronkil in ${cronkill[*]} ; do
+       kill -15 ${cronkil}
+    done
+    rm -rf $cleaner_pid
+    echo "[info]: Cache Cleaner stoped" >> $log_cleaner
+}
+
+case "$1" in
+  start)
+    stop_cleaner
+    start_cleaner
+    ;;
+  stop)
+    stop_cleaner
+    ;;
+  auto)
+    run_otomatis
+    ;;
+  *)
+    echo "$0:  usage: $0 {start|stop}"
+    ;;
+esac

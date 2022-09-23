@@ -1,0 +1,40 @@
+#!/system/bin/sh
+
+cleaner() {
+    # Clear the Terminal screen
+    clear
+    echo "Script is running!"
+    echo "Cleaning apps cache..."
+    sleep 0.75
+
+    local logs1="[info]: Cleaning apps cache... (Terminal)"
+    echo $logs1 >> /data/adb/cleaner/run/cleaner.log
+
+    # Search and clear the apps cache in the "/data/data" directory
+    find /data/data/*/cache/* -delete &>/dev/null
+    # Search and clear the apps code_cache in the "/data/data" directory
+    find /data/data/*/code_cache/* -delete &>/dev/null
+    # Search and clear the apps cache in the "/data/user_de/{UID}" directory
+    find /data/user_de/*/*/cache/* -delete &>/dev/null
+    # Search and clear the apps code_cache in the "/data/user_de/{UID}" directory
+    find /data/user_de/*/*/code_cache/* -delete &>/dev/null
+    # Search and clear the apps cache in the "/sdcard/Android/data" directory
+    find /sdcard/Android/data/*/cache/* -delete &>/dev/null
+
+    # Declaring a local variable with the name "logs2"
+    local logs2="[info]: Done! The apps cache has been cleaned!\n"
+    echo -e $logs2 >> /data/adb/cleaner/run/cleaner.log
+
+    # Print text on the Terminal screen
+    echo "Done! The apps cache has been cleaned!"
+}
+
+# Check if the script is running without root privileges
+if [ "$(whoami)" != "root" ]; then
+    echo "Run this command with root privileges!"
+else
+    clear
+    echo "Running script..."
+    sleep 1.25
+    cleaner
+fi

@@ -24,6 +24,9 @@ run_cleaner() {
 
     # Search and clear the apps cache in the "/sdcard/Android/data" directory
     find /sdcard/Android/data/*/cache/* -delete &>/dev/null
+
+    # Search and clear "data/system/dropbox" directory
+    find /data/system/dropbox/* -delete &>/dev/null
 }
 
 # Declaring a function with the name "automatic"
@@ -51,8 +54,9 @@ run_otomatis() {
     echo "[info]: total $size1 + $size2 + $size3 + $size4 + $size5 + $size6" >> $log_cleaner
     echo "[info]: total Cache: ${total}Kb" >> $log_cleaner
 
-    # set Size limit Cache
-    size_cache="1024000" # 524000, default 1024000 / 1GB!!
+    # set Size limit Cache (Kb)
+    # 524000 / 500MB, default 1024000 / 1GB!!
+    size_cache="1024000"
 
     # Check if the total cache size is greater than $size_cache
     if [ $total -gt $size_cache ]; then

@@ -1,7 +1,7 @@
 id=cache_cleaner
 name=Cache Cleaner
-version=v1.8
-versionCode=20220923
+version=v1.9
+versionCode=20221001
 author=🍀none
 description=This module will clean all apps cache automatically if the total cache size is more than 1GB and can be done manually by typing "su -c cleaner" in the Terminal.
 updateJson=https://github.com/taamarin/cleaner/raw/master/update.json

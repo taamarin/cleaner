@@ -1,36 +1,48 @@
 #!/system/bin/sh
 
+log() {
+  export TZ=Asia/Jakarta
+  now=$(date +"[%H:%M %z]")
+  case $1 in
+    info)
+      [ -t 1 ] && echo -e "\033[1;33m${now} [info]: $2\033[0m" || echo "${now} [info]: $2"
+    ;;
+    *)
+    [ -t 1 ] && echo -e "\033[1;30m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2"
+    ;;
+  esac
+}
+
 cleaner() {
     # Clear the Terminal screen
     clear
-    echo "[info]: Script is running!"
-    echo "[info]: Cleaning apps cache..."
+    log info "Script is running!"
+    log info "Cleaning apps cache..."
     sleep 0.75
 
-    local logs1="[info]: Cleaning apps cache... (Terminal)"
-    echo `date` > /data/adb/cleaner/run/cleaner.log
-    echo $logs1 >> /data/adb/cleaner/run/cleaner.log
+    echo $(date) > /data/adb/cleaner/run/cleaner.log
+    echo $(date +"[%H:%M %z]") "[info]: Cleaning apps cache... (Terminal)" >> /data/adb/cleaner/run/cleaner.log
 
     local size1=$(du -cs /data/data/*/cache | grep total | cut -f 1)
-    echo "[info]: data/data/*/cache >>>>> ${size1}Kb"
+    log info "data/data/*/cache >>>>> ${size1}Kb"
     local size2=$(du -cs /data/data/*/code_cache | grep total | cut -f 1)
-    echo "[info]: data/data/*/code_cache >>>>> ${size2}Kb"
+    log info "data/data/*/code_cache >>>>> ${size2}Kb"
 
     local size3=$(du -cs /data/user_de/*/*/cache | grep total | cut -f 1)
-    echo "[info]: data/user_de/*/*/cache >>>>> ${size3}Kb"
+    log info "data/user_de/*/*/cache >>>>> ${size3}Kb"
     local size4=$(du -cs /data/user_de/*/*/code_cache | grep total | cut -f 1)
-    echo "[info]: data/user_de/*/*/code_cache >>>>> ${size4}Kb"
+    log info "data/user_de/*/*/code_cache >>>>> ${size4}Kb"
 
     local size5=$(du -cs /sdcard/Android/data/*/cache | grep total | cut -f 1)
-    echo "[info]: sdcard/android/data/*/cache >>>>> ${size5}Kb"
+    log info "sdcard/android/data/*/cache >>>>> ${size5}Kb"
 
     local size6=$(du -cs /data/system/dropbox | grep total | cut -f 1)
-    echo "[info]: data/system/dropbox >>>>> ${size6}Kb"
+    log info "data/system/dropbox >>>>> ${size6}Kb"
 
     # total size cache
     local total=$(( size1 + size2 + size3 + size4 + size5 + size6 ))
-    echo "[info]: total $size1 + $size2 + $size3 + $size4 + $size5 + $size6"
-    echo "[info]: total Cache: ${total}Kb"
+    log info "total ${size1} + ${size2} + ${size3} + ${size4} + ${size5} + ${size6}"
+    log info "total Cache: ${total}Kb"
 
     # Search and clear the apps cache in the "/data/data" directory
     find /data/data/*/cache/* -delete &>/dev/null
@@ -46,19 +58,18 @@ cleaner() {
     find /data/system/dropbox/* -delete &>/dev/null
 
     # Declaring a local variable with the name "logs2"
-    local logs2="[info]: Done! The apps cache has been cleaned!\n"
-    echo -e $logs2 >> /data/adb/cleaner/run/cleaner.log
+    echo $(date +"[%H:%M %z]") "[info]: Done! The apps cache has been cleaned!\n" >> /data/adb/cleaner/run/cleaner.log
 
     # Print text on the Terminal screen
-    echo "[info]: Done! The apps cache has been cleaned!"
+    log info "Done! The apps cache has been cleaned!"
 }
 
 # Check if the script is running without root privileges
 if [ "$(whoami)" != "root" ]; then
-    echo "[info]: Run this command with root privileges!"
+    log info "Run this command with root privileges!"
 else
     clear
-    echo "[info]: Running script..."
+    log info "Running script..."
     sleep 1.25
     cleaner
 fi

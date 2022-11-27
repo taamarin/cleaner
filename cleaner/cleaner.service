@@ -6,6 +6,7 @@ busybox_path="/data/adb/magisk/busybox"
 cleaner_run_path="/data/adb/cleaner/run"
 log_cleaner="${cleaner_run_path}/cleaner.log"
 cleaner_pid="${cleaner_run_path}/cache.pid"
+
 # “At minute 0 past every 6th hour.”
 schedule_cleaner="0 */6 * * *"
 
@@ -14,10 +15,10 @@ log() {
   now=$(date +"[%H:%M %z]")
   case $1 in
     info)
-      [ -t 1 ] && echo -e "\033[1;33m${now} [info]: $2\033[0m" || echo "${now} [info]: $2"
+      [ -t 1 ] && echo -e "\033[1;33m${now} [info]: $2\033[0m" || echo "${now} [info]: $2" | tee -a ${log_cleaner} >> /dev/null 2>&1
     ;;
     *)
-    [ -t 1 ] && echo -e "\033[1;30m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2"
+    [ -t 1 ] && echo -e "\033[1;30m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2" | tee -a ${log_cleaner} >> /dev/null 2>&1
     ;;
   esac
 }
@@ -39,7 +40,7 @@ run_cleaner() {
 
 # Declaring a function with the name "automatic"
 run_otomatis() {
-    echo $(date) > $log_cleaner
+    echo $(date) > ${log_cleaner}
     local size1=$(du -cs /data/data/*/cache | grep total | cut -f 1)
     log info "data/data/*/cache >>>>> ${size1}Kb"
     local size2=$(du -cs /data/data/*/code_cache | grep total | cut -f 1)
@@ -67,7 +68,7 @@ run_otomatis() {
     size_cache="1024000"
 
     # Check if the total cache size is greater than $size_cache
-    if [ $total -gt $size_cache ]; then
+    if [ $total -gt ${size_cache} ]; then
         # Write the logs to the ".txt" file in the "/data/adb/cleaner/run" directory
         log info "Cleaning apps cache..."
         # Calling the "cleaner" function
@@ -85,7 +86,7 @@ run_crond() {
     if [ "$?" = 0 ] ; then
        ulimit -SHn 1000000
        nohup ${busybox_path} crond -c ${cleaner_run_path} > /dev/null 2>&1 &
-       echo -n $! > $cleaner_pid
+       echo -n $! > ${cleaner_pid}
     fi
 
     # run crontab

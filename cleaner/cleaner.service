@@ -10,99 +10,107 @@ cleaner_pid="${cleaner_run_path}/cache.pid"
 # “At minute 0 past every 6th hour.”
 schedule_cleaner="0 */6 * * *"
 
+# Define the log function
 log() {
-  export TZ=Asia/Jakarta
+  # Get the current time in the format of [HH:MM +ZZZZ]
   now=$(date +"[%H:%M %z]")
-  case $1 in
-    info)
-      [ -t 1 ] && echo -e "\033[1;33m${now} [info]: $2\033[0m" || echo "${now} [info]: $2" | tee -a ${log_cleaner} >> /dev/null 2>&1
-    ;;
-    *)
-    [ -t 1 ] && echo -e "\033[1;30m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2" | tee -a ${log_cleaner} >> /dev/null 2>&1
-    ;;
-  esac
+  
+  # Check the log level
+  if [ "$1" = "info" ]; then
+    # If the log level is 'info', print the message in yellow
+    if [ -t 1 ]; then
+      # If the output is a terminal, use ANSI escape codes to print in yellow
+      echo -e "\033[1;33m${now} [info]: $2\033[0m"
+    fi
+  else
+    # For any other log level, print the message in gray
+    if [ -t 1 ]; then
+      # If the output is a terminal, use ANSI escape codes to print in gray
+      echo -e "\033[1;30m${now} [$1]: $2\033[0m"
+    fi
+  fi
+  
+  # Append the log to a file specified by the log_cleaner variable
+  echo "${now} [$1]: $2" >> "${log_cleaner}" 2>/dev/null
 }
 
+# Define the run_cleaner function
 run_cleaner() {
-    # Search and clear the apps cache in the "/data/data" directory
-    find /data/data/*/cache/* -delete &>/dev/null
-    # Search and clear the apps code_cache in the "/data/data" directory
-    find /data/data/*/code_cache/* -delete &>/dev/null
-    # Search and clear the apps cache in the "/data/user_de/{UID}" directory
-    find /data/user_de/*/*/cache/* -delete &>/dev/null
-    # Search and clear the apps code_cache in the "/data/user_de/{UID}" directory
-    find /data/user_de/*/*/code_cache/* -delete &>/dev/null
-    # Search and clear the apps cache in the "/sdcard/Android/data" directory
-    find /sdcard/Android/data/*/cache/* -delete &>/dev/null
-    # Search and clear "data/system/dropbox" directory
-    find /data/system/dropbox/* -delete &>/dev/null
+  # Define an array of directories to clean
+  dirs=(
+    "/data/data/*/cache/*"
+    "/data/data/*/code_cache/*"
+    "/data/user_de/*/*/cache/*"
+    "/data/user_de/*/*/code_cache/*"
+    "/sdcard/Android/data/*/cache/*"
+    "/data/system/dropbox/*"
+  )
+
+  # Loop through each directory and clear its contents
+
+  for dir in "${dirs[@]}"
+  do
+      size=$(du -cs $dir | grep total | cut -f 1)
+      total=$(( total + size ))
+      log debug "$dir >>>>> ${size} Kb"
+      find $dir/* -delete &>/dev/null
+  done
+ 
+  # for dir in "${dirs[@]}"; do
+    # find "${dir}" -delete &>/dev/null
+  # done
+  
+  # Print a message to indicate that the cleaning is complete
+  log info "Cache cleaning is complete."
 }
 
-# Declaring a function with the name "automatic"
 run_otomatis() {
     echo $(date) > ${log_cleaner}
-    local size1=$(du -cs /data/data/*/cache | grep total | cut -f 1)
-    log info "data/data/*/cache >>>>> ${size1}Kb"
-    local size2=$(du -cs /data/data/*/code_cache | grep total | cut -f 1)
-    log info "data/data/*/code_cache >>>>> ${size2}Kb"
+    
+    total=$(du -cs /data/data/*/cache /data/data/*/code_cache /data/user_de/*/*/cache /data/user_de/*/*/code_cache /sdcard/Android/data/*/cache /data/system/dropbox | grep total | cut -f 1 | paste -sd+ | bc)
+    log info "total Cache: ${total} Kb"
 
-    local size3=$(du -cs /data/user_de/*/*/cache | grep total | cut -f 1)
-    log info "data/user_de/*/*/cache >>>>> ${size3}Kb"
-    local size4=$(du -cs /data/user_de/*/*/code_cache | grep total | cut -f 1)
-    log info "data/user_de/*/*/code_cache >>>>> ${size4}Kb"
-
-    local size5=$(du -cs /sdcard/Android/data/*/cache | grep total | cut -f 1)
-    log info "sdcard/android/data/*/cache >>>>> ${size5}Kb"
-
-    local size6=$(du -cs /data/system/dropbox | grep total | cut -f 1)
-    log info "data/system/dropbox >>>>> ${size6}Kb"
-
-
-    # total size cache
-    local total=$(( size1 + size2 + size3 + size4 + size5 + size6 ))
-    log info "total ${size1} + ${size2} + ${size3} + ${size4} + ${size5} + ${size6}"
-    log info "total Cache: ${total}Kb"
-
-    # set Size limit Cache (Kb)
-    # 524000 / 500MB, default 1024000 / 1GB!!
-    size_cache="1024000"
-
-    # Check if the total cache size is greater than $size_cache
-    if [ $total -gt ${size_cache} ]; then
-        # Write the logs to the ".txt" file in the "/data/adb/cleaner/run" directory
+    size_cache=1024000 # Set size limit for Cache (in Kb)
+    
+    if [ "$total" -gt "$size_cache" ]; then
         log info "Cleaning apps cache..."
-        # Calling the "cleaner" function
-        run_cleaner
-        # Write the logs to the ".log" file in the "/data/adb/cleaner/run" directory
+        run_cleaner # call the cleaner function
         log info "Done! The apps cache has been cleaned!"
     else
-        log info "Skip! Cache size is not yet ${size_cache}Kb"
+        log info "Skip! Cache size is not yet ${size_cache} Kb"
     fi
-    log info "have you ever jumped over these bushes?"
+    
+    log info "Have you ever jumped over these bushes?"
 }
 
 run_crond() {
-    # setup crond
-    if [ "$?" = 0 ] ; then
-       ulimit -SHn 1000000
-       nohup ${busybox_path} crond -c ${cleaner_run_path} > /dev/null 2>&1 &
-       echo -n $! > ${cleaner_pid}
-    fi
+  # Setup crond
+  if [ "$?" -eq 0 ]; then
+    ulimit -SHn 1000000
+    nohup "${busybox_path}" crond -c "${cleaner_run_path}" > /dev/null 2>&1 &
+    echo -n "$!" > "${cleaner_pid}"
+  fi
 
-    # run crontab
-    ${busybox_path} crontab -c ${cleaner_run_path} -r
-    touch ${cleaner_run_path}/root
-    chmod 0600 ${cleaner_run_path}/root
+  # Run crontab
+  "${busybox_path}" crontab -c "${cleaner_run_path}" -r
+  touch "${cleaner_run_path}/root"
+  chmod 0600 "${cleaner_run_path}/root"
 
-    # set schedule Cache cleaner & otomatis
-    echo "${schedule_cleaner} ${scripts_dir}/cleaner.service auto" >> ${cleaner_run_path}/root \
-    && log info "schedule Cache Cleaner (${schedule_cleaner})"
-
+  # Set schedule Cache cleaner & otomatis
+  if echo "${schedule_cleaner} ${scripts_dir}/cleaner.service auto" >> "${cleaner_run_path}/root"; then
+    log info "Schedule Cache Cleaner (${schedule_cleaner})"
+  fi
 }
 
 display_pid() {
-    ps -ef | grep root | grep "crond -c /data/adb/cleaner" | $busybox_path awk '{print $2}' | head -1 > ${cleaner_pid}
-    log info "Cache Cleaner service is running (PID: `cat ${cleaner_pid}`)"
+  local pid
+  pid=$(ps -ef | grep "crond -c /data/adb/cleaner" | grep -v grep | "${busybox_path}" awk '{print $2}' | head -n 1)
+  if [ -n "$pid" ]; then
+    echo "$pid" > "${cleaner_pid}"
+    log info "Cache Cleaner service is running (PID: $pid)"
+  else
+    log error "Cache Cleaner service is not running"
+  fi
 }
 
 start_cleaner() {
@@ -112,12 +120,15 @@ start_cleaner() {
 }
 
 stop_cleaner() {
-    cronkill=$(ps -ef | grep root | grep "crond -c /data/adb/cleaner/run" | ${busybox_path} awk '{ print $2 }' | sort -u)
-    for cronkil in ${cronkill[*]} ; do
-       kill -15 ${cronkil}
-    done
-    rm -rf $cleaner_pid
-    log info "Cache Cleaner stoped"
+  local pid
+  pid=$(ps -ef | grep "crond -c /data/adb/cleaner/run" | grep -v grep | "${busybox_path}" awk '{ print $2 }')
+  if [ -n "$pid" ]; then
+    kill "$pid"
+    rm -f "${cleaner_pid}"
+    log info "Cache Cleaner stopped (PID: $pid)"
+  else
+    log error "Cache Cleaner is not running"
+  fi
 }
 
 case "$1" in

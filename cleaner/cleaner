@@ -8,68 +8,48 @@ log() {
       [ -t 1 ] && echo -e "\033[1;33m${now} [info]: $2\033[0m" || echo "${now} [info]: $2"
     ;;
     *)
-    [ -t 1 ] && echo -e "\033[1;30m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2"
+    [ -t 1 ] && echo -e "\033[1;34m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2"
     ;;
   esac
 }
 
 cleaner() {
-    # Clear the Terminal screen
-    clear
+    log info "$(date)"
     log info "Script is running!"
     log info "Cleaning apps cache..."
-    sleep 0.75
 
     echo $(date) > /data/adb/cleaner/run/cleaner.log
     echo $(date +"[%H:%M %z]") "[info]: Cleaning apps cache... (Terminal)" >> /data/adb/cleaner/run/cleaner.log
 
-    local size1=$(du -cs /data/data/*/cache | grep total | cut -f 1)
-    log info "data/data/*/cache >>>>> ${size1}Kb"
-    local size2=$(du -cs /data/data/*/code_cache | grep total | cut -f 1)
-    log info "data/data/*/code_cache >>>>> ${size2}Kb"
+    local total=0
+    directories=( 
+      "/data/data/*/cache"
+      "/data/data/*/code_cache"
+      "/data/user_de/*/*/cache"
+      "/data/user_de/*/*/code_cache"
+      "/sdcard/Android/data/*/cache"
+      "/data/system/dropbox"
+    )
 
-    local size3=$(du -cs /data/user_de/*/*/cache | grep total | cut -f 1)
-    log info "data/user_de/*/*/cache >>>>> ${size3}Kb"
-    local size4=$(du -cs /data/user_de/*/*/code_cache | grep total | cut -f 1)
-    log info "data/user_de/*/*/code_cache >>>>> ${size4}Kb"
+    for dir in "${directories[@]}"
+    do
+        size=$(du -cs $dir | grep total | cut -f 1)
+        total=$(( total + size ))
+        log debug "$dir >>>>> ${size} Kb"
+        find $dir/* -delete &>/dev/null
+    done
 
-    local size5=$(du -cs /sdcard/Android/data/*/cache | grep total | cut -f 1)
-    log info "sdcard/android/data/*/cache >>>>> ${size5}Kb"
-
-    local size6=$(du -cs /data/system/dropbox | grep total | cut -f 1)
-    log info "data/system/dropbox >>>>> ${size6}Kb"
-
-    # total size cache
-    local total=$(( size1 + size2 + size3 + size4 + size5 + size6 ))
-    log info "total ${size1} + ${size2} + ${size3} + ${size4} + ${size5} + ${size6}"
-    log info "total Cache: ${total}Kb"
-
-    # Search and clear the apps cache in the "/data/data" directory
-    find /data/data/*/cache/* -delete &>/dev/null
-    # Search and clear the apps code_cache in the "/data/data" directory
-    find /data/data/*/code_cache/* -delete &>/dev/null
-    # Search and clear the apps cache in the "/data/user_de/{UID}" directory
-    find /data/user_de/*/*/cache/* -delete &>/dev/null
-    # Search and clear the apps code_cache in the "/data/user_de/{UID}" directory
-    find /data/user_de/*/*/code_cache/* -delete &>/dev/null
-    # Search and clear the apps cache in the "/sdcard/Android/data" directory
-    find /sdcard/Android/data/*/cache/* -delete &>/dev/null
-    # clean /data/system/dropbox
-    find /data/system/dropbox/* -delete &>/dev/null
-
-    # Declaring a local variable with the name "logs2"
     echo $(date +"[%H:%M %z]") "[info]: Done! The apps cache has been cleaned!\n" >> /data/adb/cleaner/run/cleaner.log
-
-    # Print text on the Terminal screen
+    log info "Total Cache: ${total}Kb"
     log info "Done! The apps cache has been cleaned!"
 }
 
-# Check if the script is running without root privileges
+# Check if the script is running with root privileges
 if [ "$(whoami)" != "root" ]; then
     log info "Run this command with root privileges!"
 else
-    clear
+    # Call the cleaner function
     log info "Running script..."
-    sleep 1.25
+    sleep 1
     cleaner
 fi

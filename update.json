@@ -1,6 +1,6 @@
 {
-    "version": "v2.0",
-    "versionCode": "20221128",
-    "zipUrl": "https://github.com/taamarin/cleaner/releases/download/v2.0/CCForMagisk_v2.0.zip",
-    "changelog": "https://github.com/taamarin/cleaner/raw/master/CHANGELOG.md"
+  "version": "v3.0",
+  "versionCode": "20230813",
+    "zipUrl": "https://github.com/taamarin/cleaner/releases/download/v3.0/CCforKSUM-v3.0.zip",
+  "changelog": "https://github.com/taamarin/cleaner/raw/master/CHANGELOG.md"
 }

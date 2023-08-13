@@ -1,3 +1,6 @@
+## Changelog v3.0
+- added KSU support
+
 ## Changelog v2.0
 - Add colored log output
 - Optimize script

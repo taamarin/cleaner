@@ -1,23 +1,67 @@
 name: release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release Tag'
+        required: true
+      branch:
+        description: 'Push Changes'
+        required: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
+      - name: Get Version
+        id: get_version
+        run: |
+          echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Update update.json and module.prop
+        run: |
+          echo '{
+            "version": "${{ github.event.inputs.tag }}",
+            "versionCode": "${{ steps.get_version.outputs.date }}",
+              "zipUrl": "https://github.com/taamarin/cleaner/releases/download/${{ github.event.inputs.tag }}/CCforKSUM-${{ github.event.inputs.tag }}.zip",
+            "changelog": "https://github.com/taamarin/cleaner/raw/master/CHANGELOG.md"
+          }' > update.json
+
+          sed -i "s/$(grep -oP 'version=\K[^ ]+' module.prop)/${{ github.event.inputs.tag }}/g" module.prop
+          sed -i "s/$(grep -oP 'versionCode=\K[^ ]+' module.prop)/$(date +%Y%m%d)/g" module.prop
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "renovate[bot]"
+          git config --local user.email "29139614+renovate[bot]@users.noreply.github.com"
+          git add update.json module.prop
+          git commit -m "${{ github.event.inputs.tag }}"
+          git push -f origin "${{github.event.inputs.branch}}"
 
       - name: run build.sh
         run: sh build.sh
 
-      - name: upload release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name }}
-          files: CCForMagisk_v*.zip
+          tag_name: ${{ github.event.inputs.tag }}
+          files: CCforKSUM-v*.zip
           generate_release_notes: true
+
+      - name: Upload to telegram
+        env:
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          CACHE_CHAT_ID: ${{ secrets.CACHE_CHAT_ID }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TITLE: ${{ github.event.inputs.tag }}
+        run: |
+          export VERSION=$(git rev-parse --short HEAD)
+          FILE=$(find ./CCforKSUM-v* -type f)
+          pip3 install python-telegram-bot
+          python3 docs/tubot.py $FILE

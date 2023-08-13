@@ -1,55 +1,69 @@
 #!/system/bin/sh
 
+PROPFILE="/data/adb/modules/cache_cleaner/module.prop"
+
 log() {
-  export TZ=Asia/Jakarta
-  now=$(date +"[%H:%M %z]")
+  now=$(date +"[%H:%M]")
   case $1 in
     info)
       [ -t 1 ] && echo -e "\033[1;33m${now} [info]: $2\033[0m" || echo "${now} [info]: $2"
     ;;
     *)
-    [ -t 1 ] && echo -e "\033[1;34m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2"
+      [ -t 1 ] && echo -e "\033[1;34m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2"
     ;;
   esac
 }
 
 cleaner() {
-    log info "$(date)"
-    log info "Script is running!"
-    log info "Cleaning apps cache..."
+  log info "$(date)"
+  log info "Script is running!"
+  log info "Cleaning apps cache..."
 
-    echo $(date) > /data/adb/cleaner/run/cleaner.log
-    echo $(date +"[%H:%M %z]") "[info]: Cleaning apps cache... (Terminal)" >> /data/adb/cleaner/run/cleaner.log
+  echo $(date) > /data/adb/cleaner/run/cleaner.log
+  echo $(date +"[%H:%M %z]") "[info]: Cleaning apps cache... (Terminal)" >> /data/adb/cleaner/run/cleaner.log
 
-    local total=0
-    directories=( 
-      "/data/data/*/cache"
-      "/data/data/*/code_cache"
-      "/data/user_de/*/*/cache"
-      "/data/user_de/*/*/code_cache"
-      "/sdcard/Android/data/*/cache"
-      "/data/system/dropbox"
-    )
+  local total=0
+  directories=( 
+    "/data/data/*/cache"
+    "/data/data/*/code_cache"
+    "/data/user_de/*/*/cache"
+    "/data/user_de/*/*/code_cache"
+    "/sdcard/Android/data/*/cache"
+    "/data/system/dropbox"
+  )
 
-    for dir in "${directories[@]}"
-    do
-        size=$(du -cs $dir | grep total | cut -f 1)
-        total=$(( total + size ))
-        log debug "$dir >>>>> ${size} Kb"
-        find $dir/* -delete &>/dev/null
-    done
+  for dir in "${directories[@]}"
+  do
+    size=$(du -cs $dir | grep total | cut -f 1)
+    total=$(( total + size ))
+    log debug "$dir >>>>> ${size} Kb"
+    find $dir/* -delete &>/dev/null
+  done
 
-    echo $(date +"[%H:%M %z]") "[info]: Done! The apps cache has been cleaned!\n" >> /data/adb/cleaner/run/cleaner.log
-    log info "Total Cache: ${total}Kb"
-    log info "Done! The apps cache has been cleaned!"
+  echo $(date +"[%H:%M %z]") "[info]: Done! The apps cache has been cleaned!\n" >> /data/adb/cleaner/run/cleaner.log
+
+  # Total Cache
+  if [ "${total}" -ge 1024 ]; then
+    total_cache="$(expr ${total} / 1024) MB"
+  else
+    total_cache="${total} KB"
+  fi
+
+  # Escape special characters in the total_cache variable
+  escaped_total_cache=$(printf '%s\n' "${total_cache}" | sed -e 's/[\/&]/\\&/g')
+
+  # Use the escaped variable in the sed command
+  sed -Ei "s/^description=(\\[.*][[:space:]]*)?/description=[ ♻️ Total Cache: ${escaped_total_cache}, Done! The apps cache has been cleaned!! ] /g" "$PROPFILE"
+
+  log info "total Cache: ${total_cache}"
+  log info "Done! The apps cache has been cleaned!"
 }
 
 # Check if the script is running with root privileges
 if [ "$(whoami)" != "root" ]; then
-    log info "Run this command with root privileges!"
+  log info "Run this command with root privileges!"
 else
-    # Call the cleaner function
-    log info "Running script..."
-    sleep 1
-    cleaner
+  # Call the cleaner function
+  log info "Running script..."
+  cleaner
 fi

@@ -1,3 +1,7 @@
+## Changelog v3.0.1
+- fix uninstall module
+- add current time in module.prop
+
 ## Changelog v3.0
 - added KSU support
 

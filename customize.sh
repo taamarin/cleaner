@@ -5,7 +5,7 @@ ASH_STANDALONE=1
 
 module_descriptions() {
     # Print text on the Terminal screen (Magisk)
-    ui_print "- CC (Magisk Module)"
+    ui_print "- Cleaner Cache (Magisk Module)"
     ui_print "- A simple module that allows your device to clean all apps cache"
     ui_print "- Automatically if the total cache size is more than 1GB"
     ui_print "- And can be done manually by typing 'su -c cleaner' in the Terminal."
@@ -19,8 +19,6 @@ module_descriptions() {
 install_module() {
     module_descriptions
     ui_print "- Installing..."
-    sleep 1
-
     ui_print "- Extracting module files"
     mkdir -p $MODPATH/system/bin
     mkdir -p /data/adb/cleaner
@@ -35,7 +33,6 @@ install_module() {
 
     rm -rf /data/adb/cleaner/cleaner
 
-    sleep 1
     ui_print "- Settings module"    
     ui_print "- Settings permission"
     set_perm_recursive $MODPATH 0 0 0755 0644

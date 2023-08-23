@@ -16,7 +16,6 @@ TITLE = os.environ.get("TITLE")
 VERSION = os.environ.get("VERSION")
 MSG_TEMPLATE = """
 *{title}*
-\#cli\_{version}
 [workflow run]({run_url})
 """.strip()
 
